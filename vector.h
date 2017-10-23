@@ -12,11 +12,15 @@ enum initialization: bool {
     LAZY_VEC_INIT = true
 };
 
+#ifndef LAZY_PUSH_BACK_RESIZING_FACTOR
+#define LAZY_PUSH_BACK_RESIZING_FACTOR 1.25
+#endif
+
 template<typename T, typename size_type=std::size_t>
 class vector {
     T *data_;
     size_type n_, m_;
-    static constexpr double PUSH_BACK_RESIZING_FACTOR = 1.25;
+    static constexpr double PUSH_BACK_RESIZING_FACTOR = LAZY_PUSH_BACK_RESIZING_FACTOR;
 
 public:
     using value_type = T;
@@ -61,7 +65,7 @@ public:
     template<typename... Args>
     auto &push_back(Args&& ... args) {
         if(n_ + 1 > m_) {
-            m_ *= PUSH_BACK_RESIZING_FACTOR;
+            m_ *= std::max(static_cast<size_type>(m_ * PUSH_BACK_RESIZING_FACTOR), m_ + 1);
             data_ = static_cast<T *>(std::realloc(data_, sizeof(T) * (m_)));
         }
         new(data_ + n_++) T(std::forward<Args>(args)...);
