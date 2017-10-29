@@ -5,16 +5,16 @@
 #include <cstring>
 #include <cstdlib>
 
+#ifndef LAZY_PUSH_BACK_RESIZING_FACTOR
+#define LAZY_PUSH_BACK_RESIZING_FACTOR 1.25
+#endif
+
 namespace lazy {
 
 enum initialization: bool {
     LAZY_VEC_NOINIT = false,
     LAZY_VEC_INIT = true
 };
-
-#ifndef LAZY_PUSH_BACK_RESIZING_FACTOR
-#define LAZY_PUSH_BACK_RESIZING_FACTOR 1.25
-#endif
 
 template<typename T, typename size_type=std::size_t>
 class vector {
@@ -65,7 +65,7 @@ public:
     template<typename... Args>
     auto &push_back(Args&& ... args) {
         if(n_ + 1 > m_) {
-            m_ *= std::max(static_cast<size_type>(m_ * PUSH_BACK_RESIZING_FACTOR), m_ + 1);
+            m_ = std::max(static_cast<size_type>(m_ * PUSH_BACK_RESIZING_FACTOR), m_ + 1);
             data_ = static_cast<T *>(std::realloc(data_, sizeof(T) * (m_)));
         }
         new(data_ + n_++) T(std::forward<Args>(args)...);
@@ -84,6 +84,13 @@ public:
         reserve(newsize);
         if(init) {
             for(;n_ < m_;) new(data_ + n_++) T(std::forward<Args>(args)...);
+        }
+    }
+    void shrink_to_fit() {
+        if(m_ > n_) {
+            auto tmp(static_cast<T*>(std::realloc(data_, sizeof(T) * n_)));
+            if(tmp == nullptr) throw std::bad_alloc();
+            data_ = tmp;
         }
     }
     T &operator[](size_type idx) {return data_[idx];}
