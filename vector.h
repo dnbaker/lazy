@@ -11,6 +11,11 @@
 #define LAZY_PUSH_BACK_RESIZING_FACTOR 1.25
 #endif
 
+#ifndef RUNTIME_ERROR
+#define RUNTIME_ERROR(msg) \
+        throw std::runtime_error(std::string("[") + __FILE__ + ':' + __PRETTY_FUNCTION__ + std::to_string(__LINE__) + "] " + msg)
+#endif
+
 namespace lazy {
 
 enum initialization: bool {
@@ -84,7 +89,7 @@ public:
         if(n_ + 1 > m_) {
             data_ = static_cast<T *>(std::realloc(data_, sizeof(T) * (n_ + 1)));
 #if !NDEBUG
-            if(m_ + 1 < m_) throw std::runtime_error(
+            if(m_ + 1 < m_) RUNTIME_ERROR(
                 ks::sprintf("Type of size %zu is not big enough. (%zu, %zu)\n",
                             sizeof(m_), m_, m_ + 1).data());
 #else
