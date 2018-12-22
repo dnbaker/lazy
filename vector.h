@@ -32,7 +32,7 @@ class vector {
 public:
     using value_type = T;
     template<typename... FactoryArgs>
-    vector(size_type n=0, bool init=!std::is_pod_v<T>, FactoryArgs &&...args): n_{n}, m_{n}, data_{n ? static_cast<T *>(std::malloc(sizeof(T) * n)): nullptr} {
+    vector(size_type n=0, bool init=!std::is_pod<T>::value, FactoryArgs &&...args): n_{n}, m_{n}, data_{n ? static_cast<T *>(std::malloc(sizeof(T) * n)): nullptr} {
         if (init)
             for(size_type i(0); i < n_; ++i)
                 new(data_ + i) T(std::forward<FactoryArgs>(args)...);
@@ -62,10 +62,10 @@ public:
     auto size() const {return n_;}
     auto capacity() const {return m_;}
     vector &operator=(const vector &o) {
-        if(m_ < o.m_) data_ = (T *)std::realloc(data_, sizeof(T) * o.m_);
+        if(m_ < o.m_) data_ = static_cast<T *>(std::realloc(data_, sizeof(T) * o.m_));
         n_ = o.n_;
         m_ = o.m_;
-        std::copy(begin(), end(), (T *)o.begin());
+        std::copy(begin(), end(), o.begin());
         return *this;
     }
     vector &operator=(vector &&o) {
@@ -133,7 +133,11 @@ public:
     T &operator[](size_type idx) {return data_[idx];}
     const T &operator[](size_type idx) const {return data_[idx];}
     ~vector(){
+#if __cplusplus < 201703L
+        if(!std::is_trivially_destructible<T>::value) {
+#else
         if constexpr(!std::is_trivially_destructible_v<T>) {
+#endif
             for(auto &el: *this) el.~T();
         }
         std::free(data_);
