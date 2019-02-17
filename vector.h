@@ -5,7 +5,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <memory>
-#include "kspp/ks.h"
+#include <algorithm>
 
 #ifndef LAZY_PUSH_BACK_RESIZING_FACTOR
 #define LAZY_PUSH_BACK_RESIZING_FACTOR 1.25
@@ -31,41 +31,45 @@ class vector {
 
 public:
     using value_type = T;
+    using const_pointer_type = const T *;
+    using pointer_type = T *;
     template<typename... FactoryArgs>
-    vector(size_type n=0, bool init=!std::is_pod<T>::value, FactoryArgs &&...args): n_{n}, m_{n}, data_{n ? static_cast<T *>(std::malloc(sizeof(T) * n)): nullptr} {
+    vector(size_type n=0, bool init=!std::is_pod<T>::value, FactoryArgs &&...args): n_{n}, m_{n}, data_{n ? static_cast<pointer_type>(std::malloc(sizeof(T) * n)): nullptr} {
         if (init)
             for(size_type i(0); i < n_; ++i)
                 new(data_ + i) T(std::forward<FactoryArgs>(args)...);
     }
-    vector(const vector &other): n_(other.n_), m_(other.n_), data_{static_cast<T *>(std::malloc(sizeof(T) * m_))} {
+    vector(const vector &other): n_(other.n_), m_(other.n_), data_{static_cast<pointer_type>(std::malloc(sizeof(T) * m_))} {
         std::copy(std::cbegin(other), std::cend(other), begin());
     }
     vector(vector &&other): n_(other.n_), m_(other.m_), data_(other.data_) {
         other.m_ = other.n_ = 0;
         other.data_ = nullptr;
     }
-    vector(std::initializer_list<T> il): n_(il.size()), m_(il.size()), data_{n_ ? static_cast<T *>(std::malloc(sizeof(T) * n_)): nullptr} {
+    vector(std::initializer_list<T> il): n_(il.size()), m_(il.size()), data_{n_ ? static_cast<pointer_type>(std::malloc(sizeof(T) * n_)): nullptr} {
         std::move(il.begin(), il.end(), std::begin(*this));
     }
-    const T *cbegin() const {return data_;}
-    const T *cend()   const {return data_ + n_;}
-    const T *begin()  const {return data_;}
-    const T *end()          const {return data_ + n_;}
-    T *begin()        {return data_;}
-    T *end()          {return data_ + n_;}
-    T *data()         {return data_;}
-    const T *data() const {return data_;}
+    const_pointer_type cbegin() const {return data_;}
+    const_pointer_type cend()   const {return data_ + n_;}
+    const_pointer_type begin()  const {return data_;}
+    const_pointer_type end()    const {return data_ + n_;}
+    const_pointer_type data()   const {return data_;}
+
+    pointer_type data()         {return data_;}
+
+    pointer_type begin()        {return data_;}
+    pointer_type end()          {return data_ + n_;}
     auto &back() {return data_[n_ - 1];}
     const auto &back() const {return data_[n_ - 1];}
-    auto &front() {return data_[0];}
-    const auto &front() const {return data_[0];}
+    auto &front() {return *data_;}
+    const auto &front() const {return *data_;}
     auto size() const {return n_;}
     auto capacity() const {return m_;}
     vector &operator=(const vector &o) {
-        if(m_ < o.m_) data_ = static_cast<T *>(std::realloc(data_, sizeof(T) * o.m_));
+        if(m_ < o.m_) data_ = static_cast<pointer_type>(std::realloc(data_, sizeof(T) * o.m_));
         n_ = o.n_;
         m_ = o.m_;
-        std::copy(begin(), end(), o.begin());
+        std::copy(o.begin(), o.end(), begin());
         return *this;
     }
     vector &operator=(vector &&o) {
@@ -87,11 +91,14 @@ public:
     template<typename... Args>
     auto &emplace_back(Args&& ... args) {
         if(n_ + 1 > m_) {
-            data_ = static_cast<T *>(std::realloc(data_, sizeof(T) * (n_ + 1)));
+            data_ = static_cast<pointer_type>(std::realloc(data_, sizeof(T) * (n_ + 1)));
 #if !NDEBUG
-            if(m_ + 1 < m_) RUNTIME_ERROR(
-                ks::sprintf("Type of size %zu is not big enough. (%zu, %zu)\n",
-                            sizeof(m_), m_, m_ + 1).data());
+            if(__builtin_expect(m_ + 1 < m_, 0)) {
+                char buf[256];
+                std::sprintf(buf, "Type of %zu bytes is not enough to hold the full values. (%zu, %zu)\n",
+                            sizeof(m_), m_, m_ + 1);
+                RUNTIME_ERROR(buf);
+            }
 #else
             ++m_;
 #endif
