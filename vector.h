@@ -76,7 +76,7 @@ public:
         n_ = o.n_;
         m_ = o.m_;
         data_ = o.data_;
-        std::memset(&o, 0, sizeof(o));
+        o.release();
         return *this;
     }
     template<typename osize_type>
@@ -149,6 +149,7 @@ public:
         }
         std::free(data_);
     }
+    void release() {n_ = m_ = 0; data_ = 0;}
 };
 
 }
