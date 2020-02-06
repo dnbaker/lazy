@@ -11,14 +11,6 @@
 #define LAZY_PUSH_BACK_RESIZING_FACTOR 1.25
 #endif
 
-#ifndef RUNTIME_ERROR
-#define RUNTIME_ERROR(msg) \
-        do {\
-            const std::string msgstr = std::string("[") + __FILE__ + ':' + __PRETTY_FUNCTION__ + std::to_string(__LINE__) + "] " + #msg; \
-            std::fprintf(stderr, "%s\n", msgstr.data()); \
-            throw std::runtime_error(msgstr); \
-        } while(0)
-#endif
 
 namespace lazy {
 
@@ -101,7 +93,7 @@ public:
                 char buf[256];
                 std::sprintf(buf, "Type of %zu bytes is not enough to hold the full values. (%zu, %zu)\n",
                             sizeof(m_), m_, m_ + 1);
-                RUNTIME_ERROR(buf);
+                throw std::runtime_error(buf);
             }
 #else
             ++m_;
